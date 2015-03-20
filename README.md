@@ -13,7 +13,7 @@ It consists of the following containers:
 
 To see how all these containers play together, have a look at the `provision.sh` script from the `provision` directory.
 
-Local testing using [Vagrant](http://vagrantup.com) and deployment to Amazon Web Services [(AWS)](http://aws.amazon.com) are supported, see below.
+Local testing using [Vagrant](http://vagrantup.com) and deployment to [Amazon Web Services (AWS)](http://aws.amazon.com) are supported, see below.
 
 
 Run on Vagrant
@@ -46,7 +46,7 @@ Using Vagrant, it is simple to start up multiple virtual machines (VMs) simulate
 Run on AWS
 ----------
 
-Deployment to Amazon Web Services [(AWS)](http://aws.amazon.com) can be done using the script `aws-deploy.sh` from the `provision` directory.
+Deployment to Amazon Web Services [(AWS)](http://aws.amazon.com) can be done using the `aws-deploy.sh` script from the `provision` directory.
 
 Getting started:
 
@@ -74,7 +74,7 @@ Usergrid Documentation
 Postman
 -------
 
-For debugging of REST commands, you can use [Postman](getpostman.com).
+For debugging of REST commands, you can use [Postman](http://getpostman.com).
 
 Import the postman collection `usergrid.json.postman_collection` and environment `usergrid.json.postman_environment` from the `postman` directory.
 
