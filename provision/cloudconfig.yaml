@@ -1,0 +1,13 @@
+#cloud-config
+# general documentation at https://coreos.com/docs/cluster-management/setup/cloudinit-cloud-config
+# mounting documentation at https://coreos.com/docs/cluster-management/setup/mounting-storage
+
+coreos:
+  units:
+    - name: media-ephemeral.mount
+      command: start
+      content: |
+        [Mount]
+        What=/dev/xvdb
+        Where=/media/ephemeral
+        Type=ext3
