@@ -22,6 +22,10 @@ echo '+ provision.sh'
 EXTERNAL_IP=$1
 AWS_ACCESS_KEY=$2
 AWS_SECRET_KEY=$3
+ORG_NAME=$4
+APP_NAME=$5
+ADMIN_PASS=$6
+export 
 
 echo using AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
 
@@ -32,28 +36,32 @@ docker stop $(docker ps --quiet)
 echo -x
 
 # remove existing container instances
-docker rm -f usergrid-dev usergrid cassandra elasticsearch
+docker rm -f nm-usergrid-dev nm-usergrid nm-cassandra nm-elasticsearch
 
 # build dependencies
-docker build -t java ./share/java
-docker build -t cassandra ./share/cassandra
-docker build -t elasticsearch ./share/elasticsearch
+echo; echo build java container
+docker build -t nm-java ./share/java
 
-# build usergrid development container
-docker build -t usergrid-dev ./share/usergrid-dev
+echo; echo build cassandra container
+docker build -t nm-cassandra ./share/cassandra
 
-# export the deployable tomcat app archive called `ROOT.war` and other files from `usergrid-dev` container
-docker run -v $(pwd)/share/usergrid:/root/export -t usergrid-dev /bin/bash -c "\
+echo; echo build elasticsearch container
+docker build -t nm-elasticsearch ./share/elasticsearch
+
+echo; echo build usergrid development container
+docker build -t nm-usergrid-dev ./share/usergrid-dev
+
+# export the deployable tomcat app archive called `ROOT.war` and other files from `nm-usergrid-dev` container
+docker run -v $(pwd)/share/usergrid:/root/export -t nm-usergrid-dev /bin/bash -c "\
   cp /root/usergrid/stack/rest/target/ROOT.war /root/export && \
   cp /root/usergrid/stack/config/src/main/resources/usergrid-default.properties /root/export && \
   cp -R /root/usergrid/portal /root/export"
 
-# build usergrid production container using the `ROOT.war` from previous step
-docker build -t usergrid ./share/usergrid
+# use the deployable tomcat app archive from previous step to build usergrid container
+echo; echo build usergrid production container
+docker build -t nm-usergrid ./share/usergrid
 
 echo starting containers
-docker run -d --name cassandra -p 9160:9160 cassandra
-docker run -d --name elasticsearch elasticsearch
-docker run -d --name usergrid --env EXTERNAL_IP=$1 --env AWS_ACCESS_KEY=${AWS_ACCESS_KEY} --env AWS_SECRET_KEY=${AWS_SECRET_KEY} --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 -t usergrid
-
-docker logs -f usergrid
+docker run -d --log-driver=syslog --name nm-cassandra -p 9160:9160 -p 9042:9042 --volume /media/data/cassandra-data:/var/lib/cassandra nm-cassandra
+docker run -d --log-driver=syslog --name nm-elasticsearch --volume /media/data/elasticsearch-data:/data nm-elasticsearch
+docker run -d --log-driver=syslog --name nm-usergrid --env EXTERNAL_IP=${EXTERNAL_IP} --env AWS_ACCESS_KEY=${AWS_ACCESS_KEY} --env AWS_SECRET_KEY=${AWS_SECRET_KEY} --env ADMIN_PASS=${ADMIN_PASS} --env ORGNAME=${ORG_NAME} --env APPNAME=${APP_NAME} --link nm-elasticsearch:nm-elasticsearch --link nm-cassandra:nm-cassandra -p 8080:8080 -p 8443:8443 -t nm-usergrid

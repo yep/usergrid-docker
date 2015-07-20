@@ -1,0 +1,430 @@
+Date: Thu, 21 May 2015 13:04:36 +0200
+Subject: [PATCH 1/1] Add google plus provider
+
+---
+ .../usergrid/rest/applications/AuthResource.java   |  47 +++++
+ .../applications/ApplicationResource.java          |   4 +
+ .../security/providers/GoogleplusProvider.java     | 208 +++++++++++++++++++++
+ .../security/providers/SignInProviderFactory.java  |   8 +
+ .../security/providers/GoogleplusProviderIT.java   | 106 +++++++++++
+ 5 files changed, 373 insertions(+)
+ create mode 100644 stack/services/src/main/java/org/apache/usergrid/security/providers/GoogleplusProvider.java
+ create mode 100644 stack/services/src/test/java/org/apache/usergrid/security/providers/GoogleplusProviderIT.java
+
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/AuthResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/AuthResource.java
+index 46e97c7..0322fe6 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/applications/AuthResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/applications/AuthResource.java
+@@ -249,4 +249,51 @@ public class AuthResource extends AbstractContextResource {
+             return generalAuthError( callback, e );
+         }
+     }
++    
++    
++    @GET
++    @Path("googleplus")
++    public Response authGP( @Context UriInfo ui, @QueryParam("gp_access_token") String gp_access_token,
++                           @QueryParam("ttl") long ttl, @QueryParam("callback") @DefaultValue("") String callback )
++    throws Exception {
++        
++        logger.info( "AuthResource.authGP" );
++        
++        try {
++            if ( StringUtils.isEmpty( gp_access_token ) ) {
++                return missingTokenFail( callback );
++            }
++            SignInAsProvider googleplusProvider = signInProviderFactory.googleplus( services.getApplication() );
++            User user = googleplusProvider.createOrAuthenticate( gp_access_token );
++            
++            if ( user == null ) {
++                return findAndCreateFail( callback );
++            }
++            
++            String token = management.getAccessTokenForAppUser( services.getApplicationId(), user.getUuid(), ttl );
++            
++            AccessInfo access_info =
++            new AccessInfo().withExpiresIn( tokens.getMaxTokenAgeInSeconds( token ) ).withAccessToken( token )
++            .withProperty( "user", user );
++            
++            return Response.status( SC_OK ).type( jsonMediaType( callback ) )
++            .entity( wrapWithCallback( access_info, callback ) ).build();
++        }
++        catch ( Exception e ) {
++            return generalAuthError( callback, e );
++        }
++    }
++    
++    
++    @POST
++    @Path("googleplus")
++    @Consumes(APPLICATION_FORM_URLENCODED)
++    public Response authGPPost( @Context UriInfo ui, @FormParam("gp_access_token") String gp_access_token,
++                               @QueryParam("ttl") long ttl, @QueryParam("callback") @DefaultValue("") String callback )
++    throws Exception {
++        
++        logger.info( "AuthResource.authGPPost" );
++        
++        return authGP( ui, gp_access_token, ttl, callback );
++    }
+ }
+diff --git a/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/applications/ApplicationResource.java b/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/applications/ApplicationResource.java
+index 639c41b..6542458 100644
+--- a/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/applications/ApplicationResource.java
++++ b/stack/rest/src/main/java/org/apache/usergrid/rest/management/organizations/applications/ApplicationResource.java
+@@ -216,6 +216,10 @@ public class ApplicationResource extends AbstractContextResource {
+             signInAsProvider = signInProviderFactory.foursquare(
+                     smf.getServiceManager( applicationId ).getApplication() );
+         }
++        else if ( StringUtils.equalsIgnoreCase( siaProvider, "googleplus" ) ) {
++            signInAsProvider =
++                    signInProviderFactory.googleplus( smf.getServiceManager( applicationId ).getApplication() );
++        }
+ 
+         Preconditions.checkArgument( signInAsProvider != null,
+                 "No signin provider found by that name: " + siaProvider );
+diff --git a/stack/services/src/main/java/org/apache/usergrid/security/providers/GoogleplusProvider.java b/stack/services/src/main/java/org/apache/usergrid/security/providers/GoogleplusProvider.java
+new file mode 100644
+index 0000000..6c5504f
+--- /dev/null
++++ b/stack/services/src/main/java/org/apache/usergrid/security/providers/GoogleplusProvider.java
+@@ -0,0 +1,208 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.security.providers;
++
++
++import java.util.LinkedHashMap;
++import java.util.Map;
++
++import javax.ws.rs.core.MediaType;
++
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.apache.usergrid.management.ManagementService;
++import org.apache.usergrid.persistence.EntityManager;
++import org.apache.usergrid.persistence.index.query.Identifier;
++import org.apache.usergrid.persistence.index.query.Query;
++import org.apache.usergrid.persistence.Results;
++import org.apache.usergrid.persistence.entities.User;
++import org.apache.usergrid.security.tokens.exceptions.BadTokenException;
++import org.apache.usergrid.utils.JsonUtils;
++
++import static org.apache.usergrid.persistence.Schema.PROPERTY_MODIFIED;
++import static org.apache.usergrid.utils.ListUtils.anyNull;
++
++
++/**
++ * Provider implementation for sign-in-as with Google+
++ *
++ * @author René Kilczan
++ * @author Jahn Bertsch
++ */
++public class GoogleplusProvider extends AbstractProvider {
++    private static final String DEF_API_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
++    private static final String DEF_TOKEN_URL = "https://www.googleapis.com/oauth2/v1/tokeninfo";
++
++    private Logger logger = LoggerFactory.getLogger( GoogleplusProvider.class );
++
++    private String apiUrl = DEF_API_URL;
++    private String tokenUrl = DEF_TOKEN_URL;
++    private String issuedTo;
++
++    
++    GoogleplusProvider( EntityManager entityManager, ManagementService managementService ) {
++        super( entityManager, managementService );
++    }
++
++
++    @Override
++    void configure() {
++        try {
++            Map config = loadConfigurationFor( "googleplusProvider" );
++            if ( config != null ) {
++                String foundApiUrl = ( String ) config.get( "api_url" );
++                if ( foundApiUrl != null ) {
++                    apiUrl = foundApiUrl;
++                }
++                String foundTokenUrl = ( String ) config.get( "token_url" );
++                if ( foundTokenUrl != null ) {
++                    tokenUrl = foundTokenUrl;
++                }
++                String foundIssuedTo = ( String ) config.get( "issued_to" );
++                if ( foundIssuedTo != null ) {
++                    issuedTo = foundIssuedTo;
++                }
++            }
++        }
++        catch ( Exception ex ) {
++            ex.printStackTrace();
++        }
++    }
++
++
++    @Override
++    public Map<Object, Object> loadConfigurationFor() {
++        return loadConfigurationFor( "googleplusProvider" );
++    }
++
++
++    /** Configuration parameters we look for: <ul> <li>api_url</li> <li>token_url</li> <li>issued_to</li> </ul> */
++    @Override
++    public void saveToConfiguration( Map<String, Object> config ) {
++        saveToConfiguration( "googleplusProvider", config );
++    }
++
++
++    @Override
++    Map<String, Object> userFromResource( String externalToken ) {
++        // TODO check if token belongs to our app
++        // managementService.getProperties()
++        return client.resource( apiUrl ).header( "Authorization", "Bearer " + externalToken )
++                     .accept( MediaType.APPLICATION_JSON ).get( Map.class );
++    }
++
++
++    @Override
++    public User createOrAuthenticate( String externalToken ) throws BadTokenException {
++
++        Map<String, Object> gp_user = userFromResource( externalToken );
++
++        String gp_user_id = ( String ) gp_user.get( "id" );
++        String gp_user_name = ( String ) gp_user.get( "name" );
++        // String gp_user_username = ( String ) gp_user.get( "username" );
++        String gp_picture = ( String ) gp_user.get( "picture" );
++        String gp_user_email = ( String ) gp_user.get( "email" );
++        if ( logger.isDebugEnabled() ) {
++            logger.debug( JsonUtils.mapToFormattedJsonString( gp_user ) );
++        }
++
++        User user = null;
++
++        if ( ( gp_user != null ) && !anyNull( gp_user_id, gp_user_name ) ) {
++
++            Results r = null;
++            try {
++                r = entityManager.searchCollection( entityManager.getApplicationRef(), "users",
++                        Query.findForProperty( "googleplus.id", gp_user_id ) );
++            }
++            catch ( Exception ex ) {
++                throw new BadTokenException( "Could not lookup user for that Google+ ID", ex );
++            }
++            if ( r.size() > 1 ) {
++                logger.error( "Multiple users for G+ ID: " + gp_user_id );
++                throw new BadTokenException( "multiple users with same Google+ ID" );
++            }
++
++            if ( r.size() < 1 ) {
++                Map<String, Object> properties = new LinkedHashMap<String, Object>();
++
++                properties.put( "googleplus", gp_user );
++                properties.put( "username", "gp_" + gp_user_id );
++                properties.put( "name", gp_user_name );
++                properties.put( "picture", gp_picture );
++
++                if ( gp_user_email != null ) {
++                    try {
++                        user = managementService.getAppUserByIdentifier( entityManager.getApplication().getUuid(),
++                                Identifier.fromEmail( gp_user_email ) );
++                    }
++                    catch ( Exception ex ) {
++                        throw new BadTokenException(
++                                "Could not find existing user for this applicaiton for email: " + gp_user_email, ex );
++                    }
++                    // if we found the user by email, unbind the properties from above
++                    // that will conflict
++                    // then update the user
++                    if ( user != null ) {
++                        properties.remove( "username" );
++                        properties.remove( "name" );
++                        try {
++                            entityManager.updateProperties( user, properties );
++                        }
++                        catch ( Exception ex ) {
++                            throw new BadTokenException( "Could not update user with new credentials", ex );
++                        }
++                        user.setProperty( PROPERTY_MODIFIED, properties.get( PROPERTY_MODIFIED ) );
++                    }
++                    else {
++                        properties.put( "email", gp_user_email );
++                    }
++                }
++                if ( user == null ) {
++                    properties.put( "activated", true );
++                    try {
++                        user = entityManager.create( "user", User.class, properties );
++                    }
++                    catch ( Exception ex ) {
++                        throw new BadTokenException( "Could not create user for that token", ex );
++                    }
++                }
++            }
++            else {
++                user = ( User ) r.getEntity().toTypedEntity();
++                Map<String, Object> properties = new LinkedHashMap<String, Object>();
++
++                properties.put( "googleplus", gp_user );
++                properties.put( "picture", gp_picture );
++                try {
++                    entityManager.updateProperties( user, properties );
++                    user.setProperty( PROPERTY_MODIFIED, properties.get( PROPERTY_MODIFIED ) );
++                    user.setProperty( "googleplus", gp_user );
++                    user.setProperty( "picture", gp_picture );
++                }
++                catch ( Exception ex ) {
++                    throw new BadTokenException( "Could not update user properties", ex );
++                }
++            }
++        }
++        else {
++            throw new BadTokenException( "Unable to confirm Google+ access token" );
++        }
++
++        return user;
++    }
++}
+diff --git a/stack/services/src/main/java/org/apache/usergrid/security/providers/SignInProviderFactory.java b/stack/services/src/main/java/org/apache/usergrid/security/providers/SignInProviderFactory.java
+index 56c5f7e..badfa2d 100644
+--- a/stack/services/src/main/java/org/apache/usergrid/security/providers/SignInProviderFactory.java
++++ b/stack/services/src/main/java/org/apache/usergrid/security/providers/SignInProviderFactory.java
+@@ -64,4 +64,12 @@ public class SignInProviderFactory {
+         pingIdentityProvider.configure();
+         return pingIdentityProvider;
+     }
++
++
++    public SignInAsProvider googleplus( Application application ) {
++        GoogleplusProvider googleplusProviderProvider =
++                new GoogleplusProvider( emf.getEntityManager( application.getUuid() ), managementService );
++        googleplusProviderProvider.configure();
++        return googleplusProviderProvider;
++    }
+ }
+diff --git a/stack/services/src/test/java/org/apache/usergrid/security/providers/GoogleplusProviderIT.java b/stack/services/src/test/java/org/apache/usergrid/security/providers/GoogleplusProviderIT.java
+new file mode 100644
+index 0000000..139c588
+--- /dev/null
++++ b/stack/services/src/test/java/org/apache/usergrid/security/providers/GoogleplusProviderIT.java
+@@ -0,0 +1,106 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.usergrid.security.providers;
++
++
++import java.util.Map;
++import java.util.UUID;
++
++import org.junit.BeforeClass;
++import org.junit.ClassRule;
++import org.junit.Ignore;
++import org.junit.Rule;
++import org.junit.Test;
++
++import org.apache.usergrid.ServiceITSetup;
++import org.apache.usergrid.ServiceITSetupImpl;
++import org.apache.usergrid.cassandra.SpringResource;
++import org.apache.usergrid.cassandra.ClearShiroSubject;
++
++import org.apache.usergrid.management.OrganizationInfo;
++import org.apache.usergrid.management.UserInfo;
++import org.apache.usergrid.persistence.entities.Application;
++import org.apache.usergrid.persistence.entities.User;
++import org.apache.usergrid.persistence.index.impl.ElasticSearchResource;
++import org.apache.usergrid.utils.MapUtils;
++
++import static org.apache.usergrid.TestHelper.newUUIDString;
++import static org.apache.usergrid.TestHelper.uniqueOrg;
++import static org.apache.usergrid.TestHelper.uniqueUsername;
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertNotNull;
++
++
++/**
++ * Port of the FacebookProvider unit test for the Google+ Login.
++ * 
++ * @author René Kilczan
++ * @author Jahn Bertsch
++ */
++public class GoogleplusProviderIT {
++
++    private static SignInProviderFactory providerFactory;
++    private static UUID applicationId;
++
++    @Rule
++    public ClearShiroSubject clearShiroSubject = new ClearShiroSubject();
++
++    @ClassRule
++    public static ServiceITSetup setup = new ServiceITSetupImpl( );
++
++
++    @BeforeClass
++    public static void setup() throws Exception {
++        providerFactory =  SpringResource.getInstance().getBean( SignInProviderFactory.class );
++        UserInfo adminUser = setup.getMgmtSvc()
++        .createAdminUser( uniqueUsername(), "Googleplus User", "user"+newUUIDString()+"@gmail.com", "test", false,
++                         false );
++        OrganizationInfo organization = setup.getMgmtSvc().createOrganization( uniqueOrg(), adminUser, true );
++        applicationId = setup.getMgmtSvc().createApplication( organization.getUuid(), "fb-application" ).getId();
++    }
++
++    
++    @Test
++    @Ignore("Requires Googleplus credentials")
++    public void verifyGetOrCreateOk() throws Exception {
++        Application application = setup.getEmf().getEntityManager( applicationId ).getApplication();
++        Map fb_user = MapUtils.hashMap( "id", "12345678" ).map( "name", "Googleplus User" ).map( "username", "gp.user" );
++        
++        GoogleplusProvider googleplusProvider = ( GoogleplusProvider ) providerFactory.googleplus( application );
++        
++        String gp_access_token = "CAAE...NJIZD";
++        User user1 = googleplusProvider.createOrAuthenticate( gp_access_token );
++        
++        assertNotNull( user1 );
++    }
++    
++    
++    @Test
++    public void verifyConfigureOk() throws Exception {
++        Application application = setup.getEmf().getEntityManager( applicationId ).getApplication();
++        Map gpProps = MapUtils.hashMap( "api_url", "localhost" );
++        GoogleplusProvider gp = ( GoogleplusProvider ) providerFactory.googleplus( application );
++        assertNotNull( gp );
++        
++        gp.saveToConfiguration( "googleplusProvider", gpProps );
++        
++        gp.configure();
++        
++        Map map = gp.loadConfigurationFor( "googleplusProvider" );
++        assertEquals( "localhost", map.get( "api_url" ) );
++    }
++}
+-- 
+2.3.2 (Apple Git-55)
+

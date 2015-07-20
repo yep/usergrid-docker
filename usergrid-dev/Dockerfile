@@ -15,7 +15,7 @@
 
 # build usergrid from source
 
-FROM java
+FROM nm-java
 
 WORKDIR /root
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
@@ -30,13 +30,14 @@ RUN sed -i "s/\/usr\/lib\/jvm\/java-7-oracle/\/usr\/lib\/jvm\/java-7-oracle \/us
 # only clone last 50 commits for a faster cloning operation
 RUN git clone --branch two-dot-o --depth 50 https://github.com/apache/incubator-usergrid.git usergrid
 
-# build usergrid from source
+# get usergrid source, set logging level, apply patches and build
 RUN cd usergrid && \
-    git checkout b53cb07f376fcdff8ce0b3226bbb07843f12d4e9
-RUN sed -i "s/\xC3\xB8//g" /root/usergrid/stack/corepersistence/collection/src/test/java/org/apache/usergrid/persistence/collection/util/EntityHelper.java && \
+    git checkout 472ccaf2523799c51a57e324776172f57ee55ce2 && \
+    grep -rl log4j.rootLogger=INFO stack | xargs sed -i 's/log4j.rootLogger=INFO/log4j.rootLogger=WARN/g' && \
+    sed -i "s/\xC3\xB8//g" /root/usergrid/stack/corepersistence/collection/src/test/java/org/apache/usergrid/persistence/collection/util/EntityHelper.java && \
     sed -i "s/us-east-1/eu-west-1/g" /root/usergrid/stack/corepersistence/queue/src/main/java/org/apache/usergrid/persistence/queue/QueueFig.java && \
     rm -f rm -f /root/usergrid/stack/.editorconfig && \
-    cd usergrid/sdks/java && \
+    cd sdks/java && \
     mvn clean install -DskipTests=true && \
     mvn install
 RUN cd usergrid/stack && \
@@ -48,15 +49,23 @@ RUN rm -rf /var/lib/tomcat7/webapps/ROOT && \
 
 # build admin portal
 RUN npm install -g grunt-cli && \
+    apt-get install -y phantomjs && \
     sed -i "s/Usergrid.overrideUrl = 'https:\/\/api.usergrid.com\/';/Usergrid.overrideUrl = 'http:\/\/172.17.8.101:8080\/';/g" usergrid/portal/config.js && \
     cd usergrid/portal && ./build.sh
+
+# add tls certificat for encryption
+ADD tomcat.jks /root/tomcat.jks
+
+# add server patch file
+ADD server.patch /root/server.patch
 
 # set default command when starting container with "docker run"
 CMD /root/run.sh
 
 # exposed ports:
 #  8080 usergrid http interface
-EXPOSE 8080
+#  8443 usergrid https interface
+EXPOSE 8080 8443
 
 # add runtime configuration script. since this is updated frequently during development, add last
 ADD run.sh /root/run.sh

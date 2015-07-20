@@ -19,6 +19,30 @@
 echo
 echo '+ aws-provision.sh'
 
+if [ -z "$1" ]; then
+  echo 'Error: AWS_ACCESS_KEY not set!'
+  exit
+fi
+if [ -z "$2" ]; then
+  echo 'Error: AWS_SECRET_KEY not set!'
+  exit
+fi
+if [ -z "$3" ]; then
+  echo 'Warning: ORG_NAME not set! Using "org"'
+  ORG_NAME=org
+else
+  ORG_NAME=$3
+fi
+if [ -z "$4" ]; then
+  echo 'Warning: APP_NAME not set! Using "app"'
+  APP_NAME=app
+else
+  APP_NAME=$4
+fi
+if [ -z "$5" ]; then
+  echo 'Info: ADMIN_PASSWORD not set!'
+fi
+
 EXTERNAL_IP=$(curl --silent http://169.254.169.254/latest/meta-data/public-ipv4)
 echo using EXTERNAL_IP=$EXTERNAL_IP
 echo using AWS_ACCESS_KEY=$1
@@ -26,8 +50,10 @@ echo using AWS_ACCESS_KEY=$1
 
 set +x
 
-echo applying cloudconfig.yaml
-sudo coreos-cloudinit -from-file=/home/core/share/cloudconfig.yaml
+echo apply cloudconfig.yaml
+sudo mkdir -p /var/lib/coreos-install
+sudo mv /home/core/share/cloudconfig.yaml /var/lib/coreos-install/user_data
+sudo coreos-cloudinit -from-file=/var/lib/coreos-install/user_data
 
 # continue with the script which is used with both aws and vagrant
-source $(dirname "${BASH_SOURCE[0]}")/provision.sh $EXTERNAL_IP $1 $2
+source $(dirname "${BASH_SOURCE[0]}")/provision.sh $EXTERNAL_IP $1 $2 $ORG_NAME $APP_NAME $5

@@ -14,7 +14,7 @@
 
 # container to run usergrid (without building it)
 
-FROM java
+FROM nm-java
 
 WORKDIR /root
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
@@ -33,6 +33,15 @@ ADD ROOT.war /root/usergrid/ROOT.war
 ADD usergrid-default.properties /root/usergrid/stack/config/src/main/resources/usergrid-default.properties
 ADD portal /root/usergrid/portal
 
+# add tls certificat for encryption
+ADD tomcat.jks /root/tomcat.jks
+
+# add server patch file
+ADD server.patch /root/server.patch
+
+# add setup file for customer settings
+ADD setup.sh /root/setup.sh
+
 # install usergrid in tomcat
 RUN rm -rf /var/lib/tomcat7/webapps/ROOT && \
     cp /root/usergrid/ROOT.war /var/lib/tomcat7/webapps
@@ -42,7 +51,8 @@ CMD /root/run.sh
 
 # exposed ports:
 #  8080 usergrid http interface
-EXPOSE 8080
+#  8443 usergrid https interface
+EXPOSE 8080 8443
 
 # add runtime configuration script. since this is updated frequently during development, add last
 ADD run.sh /root/run.sh
