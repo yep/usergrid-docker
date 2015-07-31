@@ -1,0 +1,3 @@
+[submodule "elasticsearch"]
+	path = elasticsearch
+	url = https://github.com/yep/usergrid-elasticsearch
