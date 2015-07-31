@@ -4,3 +4,6 @@
 [submodule "java"]
 	path = java
 	url = https://github.com/yep/usergrid-java
+[submodule "cassandra"]
+	path = cassandra
+	url = https://github.com/yep/usergrid-cassandra
