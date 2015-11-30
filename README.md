@@ -3,8 +3,6 @@ Usergrid on Docker
 
 A collection of containers to run [Usergrid](https://usergrid.apache.org) on [Docker](https://www.docker.com).
 
-To use Docker's automated builds, each container uses a separate repository.
-
 There are the following containers:
 
  - [java](https://hub.docker.com/r/yep1/usergrid-java) - Ubuntu base image with Oracle JVM version 8 - [github](https://github.com/yep/usergrid-java) - (MIT license)
@@ -62,9 +60,14 @@ Get the submodules first:
     cd usergrid-docker
     git submodule update --init
 
-Then, build each container:
+First, build the java base container:
 
     cd java && build -t java .
+
+Then, in each `Dockerfile` change `FROM yep1/usergrid-java` to `FROM java` to use the above java container.
+
+Finally, build the containers:
+
     cd cassandra && build -t cassandra .
     cd elasticsearch && build -t elasticsearch .
     cd usergrid && build -t usergrid .
