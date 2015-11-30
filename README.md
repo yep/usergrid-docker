@@ -50,6 +50,7 @@ Configuration variables used in the `usergrid` container:
     AWS_ACCESS_KEY
     AWS_SECRET_KEY
     CLUSTER_NAME
+    TOMCAT_RAM
 
 
 Build

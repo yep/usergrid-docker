@@ -44,8 +44,11 @@ fi
 if [ -z "${JAVA_HOME}" ]; then
   JAVA_HOME=/usr/lib/jvm/java-8-oracle
 fi
+if [ -z "${TOMCAT_RAM}" ]; then
+  TOMCAT_RAM=512m
+fi
 
-echo "+++ usergrid configuration:  CLUSTER_NAME=${CLUSTER_NAME}  ADMIN_USER=${ADMIN_USER}  JAVA_HOME=${JAVA_HOME}  ORG_NAME=${ORG_NAME}  APP_NAME=${APP_NAME}  AWS_ACCESS_KEY=${AWS_ACCESS_KEY}"
+echo "+++ usergrid configuration:  CLUSTER_NAME=${CLUSTER_NAME}  ADMIN_USER=${ADMIN_USER}  JAVA_HOME=${JAVA_HOME}  ORG_NAME=${ORG_NAME}  APP_NAME=${APP_NAME}  AWS_ACCESS_KEY=${AWS_ACCESS_KEY}  TOMCAT_RAM=${TOMCAT_RAM}"
 
 
 # start usergrid
@@ -81,9 +84,9 @@ sed -i "s/#elasticsearch.port=9300/elasticsearch.port=${ELASTICSEARCH_PORT_9300_
 
 # append java options for aws access key and aws secret key 
 # but do not echo the secret so it does not end up in the logs
-echo >> /etc/default/tomcat7
 set +x
-echo "JAVA_OPTS=\"\${JAVA_OPTS} -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY} -DAWS_SECRET_KEY=${AWS_SECRET_KEY}\"" >> /etc/default/tomcat7
+sed -i "s#\"-Djava.awt.headless=true -Xmx128m -XX:+UseConcMarkSweepGC\"#\"-Djava.awt.headless=true -XX:+UseConcMarkSweepGC -Xmx${TOMCAT_RAM} -Xms${TOMCAT_RAM} -verbose:gc -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY} -DAWS_SECRET_KEY=${AWS_SECRET_KEY}\"#g" /etc/default/tomcat7
+
 
 echo +++ load changed usergrid configuration
 service tomcat7 stop
