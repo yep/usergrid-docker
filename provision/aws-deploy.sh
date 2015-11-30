@@ -185,7 +185,7 @@ done
 echo "APP_NAME=$APP_NAME" >> $SCRIPT_HOME/post_setup.sh
 echo "ORG_NAME=$ORG_NAME" >> $SCRIPT_HOME/post_setup.sh
 cat $SCRIPT_HOME/post_setup2.sh >> $SCRIPT_HOME/post_setup.sh
-echo "docker rm -f usergrid; docker run --log-driver=syslog --detach --name usergrid --env EXTERNAL_IP=${EXTERNAL_IP} --env ORGNAME=${ORG_NAME} --env APPNAME=${APP_NAME} --env AWS_ACCESS_KEY=${AWS_ACCESS_KEY} --env AWS_SECRET_KEY=${AWS_SECRET_KEY} --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 -p 8443:8443 -t usergrid">>$SCRIPT_HOME/post_setup.sh
+echo "docker rm -f usergrid; docker run --log-driver=syslog --detach --name usergrid --env EXTERNAL_IP=${EXTERNAL_IP} --env ORG_NAME=${ORG_NAME} --env APP_NAME=${APP_NAME} --env AWS_ACCESS_KEY=${AWS_ACCESS_KEY} --env AWS_SECRET_KEY=${AWS_SECRET_KEY} --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 -p 8443:8443 -t usergrid">>$SCRIPT_HOME/post_setup.sh
 rm $SCRIPT_HOME/post_setup2.sh 2> /dev/null
 rm $SCRIPT_HOME/../usergrid/setup.sh 2> /dev/null
 mv $SCRIPT_HOME/post_setup.sh $SCRIPT_HOME/../usergrid/setup.sh

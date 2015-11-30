@@ -27,7 +27,7 @@ Start Cassandra and Elasticsearch:
 
 Start Usergrid, configuration is done using environment variables (--env), see below:
 
-    docker run --detach --name usergrid --env ADMIN_PASS=password --env ORGNAME=org --env APPNAME=app --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 yep1/usergrid-docker
+    docker run --detach --name usergrid --env ADMIN_PASS=password --env ORG_NAME=org --env APP_NAME=app --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 yep1/usergrid-docker
 
 
 Environment Variables
@@ -45,10 +45,10 @@ Configuration variables used in the `usergrid` container:
     ADMIN_USER
     ADMIN_PASS
     ADMIN_MAIL
-    ORGNAME
-    APPNAME
-    ACCESS_KEY_ENV_VAR
-    SECRET_KEY_ENV_VAR
+    ORG_NAME
+    APP_NAME
+    AWS_ACCESS_KEY
+    AWS_SECRET_KEY
     CLUSTER_NAME
 
 

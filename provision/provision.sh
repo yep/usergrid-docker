@@ -40,4 +40,4 @@ docker rm -f usergrid cassandra elasticsearch
 echo starting containers
 docker run -d --log-driver=syslog --name cassandra -p 9160:9160 -p 9042:9042 --volume /media/data/cassandra-data:/var/lib/cassandra yep1/usergrid-cassandra
 docker run -d --log-driver=syslog --name elasticsearch --volume /media/data/elasticsearch-data:/data yep1/usergrid-elasticsearch
-docker run -d --log-driver=syslog --name usergrid --env EXTERNAL_IP=${EXTERNAL_IP} --env AWS_ACCESS_KEY=${AWS_ACCESS_KEY} --env AWS_SECRET_KEY=${AWS_SECRET_KEY} --env ADMIN_PASS=${ADMIN_PASS} --env ORGNAME=${ORG_NAME} --env APPNAME=${APP_NAME} --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 -t yep1/usergrid-docker
+docker run -d --log-driver=syslog --name usergrid --env EXTERNAL_IP=${EXTERNAL_IP} --env AWS_ACCESS_KEY=${AWS_ACCESS_KEY} --env AWS_SECRET_KEY=${AWS_SECRET_KEY} --env ADMIN_PASS=${ADMIN_PASS} --env ORG_NAME=${ORG_NAME} --env APP_NAME=${APP_NAME} --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 -t yep1/usergrid-docker

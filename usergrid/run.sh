@@ -35,17 +35,17 @@ fi
 if [ -z "${ADMIN_MAIL}" ]; then
   ADMIN_MAIL=admin@example.com
 fi
-if [ -z "${ORGNAME}" ]; then
-  ORGNAME=org
+if [ -z "${ORG_NAME}" ]; then
+  ORG_NAME=org
 fi
-if [ -z "${APPNAME}" ]; then
-  APPNAME=app
+if [ -z "${APP_NAME}" ]; then
+  APP_NAME=app
 fi
 if [ -z "${JAVA_HOME}" ]; then
   JAVA_HOME=/usr/lib/jvm/java-8-oracle
 fi
 
-echo "+++ usergrid configuration:  CLUSTER_NAME=${CLUSTER_NAME}  ADMIN_USER=${ADMIN_USER}  JAVA_HOME=${JAVA_HOME}  ORGNAME=${ORGNAME}  APPNAME=${APPNAME}  AWS_ACCESS_KEY=${AWS_ACCESS_KEY}"
+echo "+++ usergrid configuration:  CLUSTER_NAME=${CLUSTER_NAME}  ADMIN_USER=${ADMIN_USER}  JAVA_HOME=${JAVA_HOME}  ORG_NAME=${ORG_NAME}  APP_NAME=${APP_NAME}  AWS_ACCESS_KEY=${AWS_ACCESS_KEY}"
 
 
 # start usergrid
@@ -110,82 +110,82 @@ curl --user ${ADMIN_USER}:${ADMIN_PASS} http://localhost:8080/system/superuser/s
 echo +++ create organization and corresponding organization admin account
 curl -D - \
      -X POST  \
-     -d "organization=${ORGNAME}&username=${ORGNAME}admin&name=${ORGNAME}admin&email=${ORGNAME}admin@example.com&password=${ORGNAME}admin" \
+     -d "organization=${ORG_NAME}&username=${ORG_NAME}admin&name=${ORG_NAME}admin&email=${ORG_NAME}admin@example.com&password=${ORG_NAME}admin" \
      http://localhost:8080/management/organizations
 
 echo +++ create admin token with permissions
-export ADMINTOKEN=$(curl -X POST --silent "http://localhost:8080/management/token" -d "{ \"username\":\"${ORGNAME}admin\", \"password\":\"${ORGNAME}admin\", \"grant_type\":\"password\"} " | cut -f 1 -d , | cut -f 2 -d : | cut -f 2 -d \")
+export ADMINTOKEN=$(curl -X POST --silent "http://localhost:8080/management/token" -d "{ \"username\":\"${ORG_NAME}admin\", \"password\":\"${ORG_NAME}admin\", \"grant_type\":\"password\"} " | cut -f 1 -d , | cut -f 2 -d : | cut -f 2 -d \")
 echo ADMINTOKEN=$ADMINTOKEN
 
 echo +++ create app
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
      -H "Content-Type: application/json" \
-     -X POST -d "{ \"name\":\"${APPNAME}\" }" \
-     http://localhost:8080/management/orgs/${ORGNAME}/apps
+     -X POST -d "{ \"name\":\"${APP_NAME}\" }" \
+     http://localhost:8080/management/orgs/${ORG_NAME}/apps
 
 
 echo +++ delete guest permissions
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X DELETE "http://localhost:8080/${ORGNAME}/${APPNAME}/roles/guest"
+     -X DELETE "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/guest"
 
 echo +++ delete default permissions which are too permissive
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X DELETE "http://localhost:8080/${ORGNAME}/${APPNAME}/roles/default" 
+     -X DELETE "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/default" 
 
 
 echo +++ create new guest role
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X POST "http://localhost:8080/${ORGNAME}/${APPNAME}/roles" \
+     -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles" \
      -d "{ \"name\":\"guest\", \"title\":\"Guest\" }"
 
 echo +++ create new default role, applied to each logged in user
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X POST "http://localhost:8080/${ORGNAME}/${APPNAME}/roles" \
+     -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles" \
      -d "{ \"name\":\"default\", \"title\":\"User\" }"
 
 
 echo +++ create guest permissions required for login
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X POST "http://localhost:8080/${ORGNAME}/${APPNAME}/roles/guest/permissions" \
+     -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/guest/permissions" \
      -d "{ \"permission\":\"post:/token\" }"
 
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X POST "http://localhost:8080/${ORGNAME}/${APPNAME}/roles/guest/permissions" \
+     -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/guest/permissions" \
      -d "{ \"permission\":\"post:/users\" }"
 
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X POST "http://localhost:8080/${ORGNAME}/${APPNAME}/roles/guest/permissions" \
+     -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/guest/permissions" \
      -d "{ \"permission\":\"get:/auth/facebook\" }"
 
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X POST "http://localhost:8080/${ORGNAME}/${APPNAME}/roles/guest/permissions" \
+     -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/guest/permissions" \
      -d "{ \"permission\":\"get:/auth/googleplus\" }"
 
 echo +++ create default permissions for a logged in user
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X POST "http://localhost:8080/${ORGNAME}/${APPNAME}/roles/default/permissions" \
+     -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/default/permissions" \
      -d "{ \"permission\":\"get,put,post,delete:/users/\${user}/**\" }"
 
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X POST "http://localhost:8080/${ORGNAME}/${APPNAME}/roles/default/permissions" \
+     -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/default/permissions" \
      -d "{ \"permission\":\"post:/notifications\" }"
 
 echo +++ create user
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
-     -X POST "http://localhost:8080/${ORGNAME}/${APPNAME}/users" \
-     -d "{ \"username\":\"${ORGNAME}user\", \"password\":\"${ORGNAME}user\", \"email\":\"${ORGNAME}user@example.com\" }"
+     -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/users" \
+     -d "{ \"username\":\"${ORG_NAME}user\", \"password\":\"${ORG_NAME}user\", \"email\":\"${ORG_NAME}user@example.com\" }"
 
 echo
 echo +++ done
