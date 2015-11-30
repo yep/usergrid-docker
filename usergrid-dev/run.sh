@@ -1,1 +1,0 @@
-../usergrid/run.sh

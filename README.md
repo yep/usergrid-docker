@@ -1,19 +1,72 @@
-Usergrid Docker Container
-=========================
+Usergrid on Docker
+==================
 
-This repository builds and runs [Usergrid](https://usergrid.incubator.apache.org) from source using [Docker](https://www.docker.com).
+A collection of containers to run [Usergrid](https://usergrid.apache.org) on [Docker](https://www.docker.com).
 
-It consists of the following containers:
+To use Docker's automated builds, each container uses a separate repository.
 
- - `java` base image using Oracle JVM version 8
- - `cassandra` version 1.2
- - `elasticsearch` version 1.4 (MIT license)
- - `usergrid-dev` builds Usergrid version 2 from source and creates the deployable Tomcat app archive `ROOT.war`
- - `usergrid` runs Usergrid using the `ROOT.war` file created by `usergrid-dev`
+There are the following containers:
 
-To see how all these containers play together, have a look at the `provision.sh` script from the `provision` directory.
+ - [java](https://hub.docker.com/r/yep1/usergrid-java) - Ubuntu base image with Oracle JVM version 8 - [github](https://github.com/yep/usergrid-java) - (MIT license)
+ - [cassandra](https://hub.docker.com/r/yep1/usergrid-cassandra/) - version 1.2 - [github](https://github.com/yep/usergrid-cassandra)
+ - [elasticsearch](https://hub.docker.com/r/yep1/usergrid-elasticsearch/) - version 1.4 - [github](https://github.com/yep/usergrid-elasticsearch) - (MIT license)
+ - [usergrid](https://hub.docker.com/r/yep1/usergrid-docker) - version 2.1 - [github](https://github.com/yep/usergrid-docker)
+
+To see how the containers play together, have a look at the `provision.sh` script from the `provision` directory.
 
 Local testing using [Vagrant](http://vagrantup.com) and deployment to [Amazon Web Services (AWS)](http://aws.amazon.com) are supported, see below.
+
+
+Usage
+-----
+
+Start Cassandra and Elasticsearch:
+
+    docker run --detach --name cassandra --volume $(pwd)/cassandra-data:/var/lib/cassandra yep1/usergrid-cassandra
+    docker run --detach --name elasticsearch --volume $(pwd)/elasticsearch-data:/data yep1/usergrid-elasticsearch
+
+Start Usergrid, configuration is done using environment variables (--env), see below:
+
+    docker run --detach --name usergrid --env ADMIN_PASS=password --env ORGNAME=org --env APPNAME=app --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 yep1/usergrid-docker
+
+
+Environment Variables
+---------------------
+
+The following [environment variables](http://docs.docker.com/userguide/dockerlinks/#environment-variables) are used to access [backing services](http://12factor.net/backing-services):
+
+    CASSANDRA_PORT_9160_TCP_ADDR
+    CASSANDRA_PORT_9160_TCP_PORT
+    ELASTICSEARCH_PORT_9300_TCP_ADDR
+    ELASTICSEARCH_PORT_9300_TCP_PORT
+
+Configuration variables used in the `usergrid` container:
+
+    ADMIN_USER
+    ADMIN_PASS
+    ADMIN_MAIL
+    ORGNAME
+    APPNAME
+    ACCESS_KEY_ENV_VAR
+    SECRET_KEY_ENV_VAR
+    CLUSTER_NAME
+
+
+Build
+-----
+
+Get the submodules first:
+
+    git clone https://github.com/yep/usergrid-docker.git
+    cd usergrid-docker
+    git submodule update --init
+
+Then, build each container:
+
+    cd java && build -t java .
+    cd cassandra && build -t cassandra .
+    cd elasticsearch && build -t elasticsearch .
+    cd usergrid && build -t usergrid .
 
 
 Run on Vagrant
@@ -123,35 +176,10 @@ Some useful OSX commands:
  * `ifconfig bridge0 delete` - manually delete a bridge if it was not properly removed by Virtualbox
 
 
-Environment Variables
----------------------
-
-Containers can be configured using environment variables.
-
-The following [environment variables](http://docs.docker.com/userguide/dockerlinks/#environment-variables) are used to access [backing services](http://12factor.net/backing-services):
-
-    CASSANDRA_PORT_9160_TCP_ADDR
-    CASSANDRA_PORT_9160_TCP_PORT
-    ELASTICSEARCH_PORT_9300_TCP_ADDR
-    ELASTICSEARCH_PORT_9300_TCP_PORT
-
-Configuration variables used in the `usergrid` and `usergrid-dev` containers:
-
-    EXTERNAL_IP
-    ADMIN_USER
-    ADMIN_PASS
-    ADMIN_MAIL
-    ORGNAME
-    APPNAME
-    ACCESS_KEY_ENV_VAR
-    SECRET_KEY_ENV_VAR
-    CLUSTER_NAME
-
-
 License
 -------
 
-    Copyright 2014 Jahn Bertsch
+    Copyright 2014-2015 Jahn Bertsch
     Copyright 2015 TOMORROW FOCUS News+ GmbH
 
     Licensed under the Apache License, Version 2.0 (the "License");

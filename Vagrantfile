@@ -3,8 +3,8 @@
 
 # this file starts a core os virtual machine using vagrant.
 #
-# this file is base on https://github.com/coreos/coreos-vagrant/blob/master/Vagrantfile
-# it is published under the apache license
+# based on https://github.com/coreos/coreos-vagrant/blob/master/Vagrantfile
+# published under the apache license
 # https://github.com/coreos/coreos-vagrant/blob/master/LICENSE
 
 require 'fileutils'
