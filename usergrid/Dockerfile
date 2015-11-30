@@ -15,7 +15,7 @@
 
 # build usergrid from source
 
-FROM java
+FROM yep1/usergrid-java
 
 WORKDIR /root
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
