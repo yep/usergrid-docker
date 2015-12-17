@@ -8,7 +8,7 @@ There are the following containers:
  - [java](https://hub.docker.com/r/yep1/usergrid-java) - Ubuntu base image with Oracle JVM version 8 - [github](https://github.com/yep/usergrid-java) - (MIT license)
  - [cassandra](https://hub.docker.com/r/yep1/usergrid-cassandra/) - version 1.2 - [github](https://github.com/yep/usergrid-cassandra)
  - [elasticsearch](https://hub.docker.com/r/yep1/usergrid-elasticsearch/) - version 1.4 - [github](https://github.com/yep/usergrid-elasticsearch) - (MIT license)
- - [usergrid](https://hub.docker.com/r/yep1/usergrid-docker) - version 2.1 - [github](https://github.com/yep/usergrid-docker)
+ - [usergrid](https://hub.docker.com/r/yep1/usergrid) - version 2.1 - [github](https://github.com/yep/usergrid-docker)
 
 To see how the containers play together, have a look at the `provision.sh` script from the `provision` directory.
 
