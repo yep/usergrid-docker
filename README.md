@@ -25,7 +25,7 @@ Start Cassandra and Elasticsearch:
 
 Start Usergrid, configuration is done using environment variables (--env), see below:
 
-    docker run --detach --name usergrid --env ADMIN_PASS=password --env ORG_NAME=org --env APP_NAME=app --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 yep1/usergrid-docker
+    docker run --detach --name usergrid --env ADMIN_PASS=password --env ORG_NAME=org --env APP_NAME=app --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 yep1/usergrid
 
 
 Environment Variables
@@ -64,7 +64,7 @@ First, build the java base container:
 
     cd java && build -t java .
 
-Then, in each `Dockerfile` change `FROM yep1/usergrid-java` to `FROM java` to use the above java container.
+Then, in each `Dockerfile` change `FROM yep1/usergrid-java` to `FROM java` to use the local java container created above.
 
 Finally, build the containers:
 
