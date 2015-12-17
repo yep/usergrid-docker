@@ -36,19 +36,18 @@ RUN \
   cd usergrid && \
   git checkout c6945e3d6f608d1333c269657eb47064866d3e0b && \
   grep -rl log4j.rootLogger=INFO stack | xargs sed -i 's#log4j.rootLogger=INFO#log4j.rootLogger=WARN#g' && \
-  sed -i "s#us-east-1#eu-west-1#g" /root/usergrid/stack/corepersistence/queue/src/main/java/org/apache/usergrid/persistence/queue/QueueFig.java && \
   \
   echo "+++ build usergrid" && \
   cd /root/usergrid/sdks/java && \
   mvn --quiet clean install -DskipTests -DskipIntegrationTests && \
   mvn --quiet install && \
   cd /root/usergrid/stack && \
-  mvn --quiet clean install -DskipTests -DskipIntegrationTests -Dusergrid-custom-spring-properties=classpath:/usergrid-custom.properties && \
+  mvn --quiet clean install -DskipTests -DskipIntegrationTests && \
   \
   echo "+++ cleanup" && \
   rm -rf /var/lib/tomcat7/webapps/ROOT && \
   mv /root/usergrid/stack/rest/target/ROOT.war /var/lib/tomcat7/webapps && \
-  mv /root/usergrid/stack/config/src/main/resources/usergrid-default.properties /root && \
+  mv /root/usergrid/stack/config/src/main/resources/usergrid-default.properties /usr/share/tomcat7/lib/usergrid-deployment.properties && \
   apt-get purge --auto-remove -y maven git-core ant && \
   rm -rf /var/lib/apt/lists/* && \
   rm -rf /root/usergrid

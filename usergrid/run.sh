@@ -23,8 +23,11 @@
 # overwrite any of the following default values at run time like this:
 #  docker run --env <key>=<value>
 
-if [ -z "${CLUSTER_NAME}" ]; then
-  CLUSTER_NAME='Cassandra Cluster'
+if [ -z "${CASSANDRA_CLUSTER_NAME}" ]; then
+  CASSANDRA_CLUSTER_NAME='usergrid'
+fi
+if [ -z "${USERGRID_CLUSTER_NAME}" ]; then
+  USERGRID_CLUSTER_NAME='usergrid'
 fi
 if [ -z "${ADMIN_USER}" ]; then
   ADMIN_USER=admin
@@ -48,49 +51,36 @@ if [ -z "${TOMCAT_RAM}" ]; then
   TOMCAT_RAM=512m
 fi
 
-echo "+++ usergrid configuration:  CLUSTER_NAME=${CLUSTER_NAME}  ADMIN_USER=${ADMIN_USER}  JAVA_HOME=${JAVA_HOME}  ORG_NAME=${ORG_NAME}  APP_NAME=${APP_NAME}  AWS_ACCESS_KEY=${AWS_ACCESS_KEY}  TOMCAT_RAM=${TOMCAT_RAM}"
+echo "+++ usergrid configuration:  CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME}  USERGRID_CLUSTER_NAME=${USERGRID_CLUSTER_NAME}  ADMIN_USER=${ADMIN_USER}  JAVA_HOME=${JAVA_HOME}  ORG_NAME=${ORG_NAME}  TOMCAT_RAM=${TOMCAT_RAM}  APP_NAME=${APP_NAME}  AWS_ACCESS_KEY=${AWS_ACCESS_KEY}"
 
 
 # start usergrid
 # ==============
 
-USERGRID_PROPERTIES_FILE=/var/lib/tomcat7/webapps/ROOT/WEB-INF/classes/usergrid-custom.properties
+echo +++ configure usergrid
 
-echo +++ start tomcat for initial deploy of usergrid war
-service tomcat7 start
+USERGRID_PROPERTIES_FILE=/usr/share/tomcat7/lib/usergrid-deployment.properties
 
-until [ "`curl --silent --show-error --connect-timeout 1 -I http://localhost:8080 | grep 'Coyote'`" != "" ];
-do
-  echo "+++ waiting for tomcat deployment to finish" && sleep 2
-done
-while [ ! -f /var/lib/tomcat7/webapps/ROOT/WEB-INF/classes/usergrid-rest-context.xml ] ;
-do
-  echo "+++ waiting for tomcat deployment to finish" && sleep 2
-done
-
-echo +++ move usergrid configuration file to correct location in extracted war file
-mv /root/usergrid-default.properties $USERGRID_PROPERTIES_FILE
-
-echo +++ usergrid configuration
 sed -i "s/cassandra.url=localhost:9160/cassandra.url=${CASSANDRA_PORT_9160_TCP_ADDR}:${CASSANDRA_PORT_9160_TCP_PORT}/g" $USERGRID_PROPERTIES_FILE
-sed -i "s/cassandra.cluster=Test Cluster/cassandra.cluster=$CLUSTER_NAME/g" $USERGRID_PROPERTIES_FILE
+sed -i "s/cassandra.cluster=Test Cluster/cassandra.cluster=$CASSANDRA_CLUSTER_NAME/g" $USERGRID_PROPERTIES_FILE
+sed -i "s/#usergrid.cluster_name=default-property/usergrid.cluster_name=$USERGRID_CLUSTER_NAME/g" $USERGRID_PROPERTIES_FILE
 sed -i "s/usergrid.version.build=\${version}/usergrid.version.build=unknown/g" $USERGRID_PROPERTIES_FILE
 sed -i "s/usergrid.sysadmin.login.name=superuser/usergrid.sysadmin.login.name=$ADMIN_USER/g" $USERGRID_PROPERTIES_FILE
 sed -i "s/usergrid.sysadmin.login.email=super@usergrid.com/usergrid.sysadmin.login.email=$ADMIN_MAIL/g" $USERGRID_PROPERTIES_FILE
-sed -i "s/usergrid.sysadmin.login.password=passwordtest/usergrid.sysadmin.login.password=$ADMIN_PASS/g" $USERGRID_PROPERTIES_FILE
+sed -i "s/usergrid.sysadmin.login.password=test/usergrid.sysadmin.login.password=$ADMIN_PASS/g" $USERGRID_PROPERTIES_FILE
 sed -i "s/usergrid.test-account/#usergrid.test-account/g" $USERGRID_PROPERTIES_FILE
 sed -i "s/#elasticsearch.hosts=127.0.0.1/elasticsearch.hosts=${ELASTICSEARCH_PORT_9300_TCP_ADDR}/g" $USERGRID_PROPERTIES_FILE
-sed -i "s/#elasticsearch.port=9300/elasticsearch.port=${ELASTICSEARCH_PORT_9300_TCP_PORT}/g" $USERGRID_PROPERTIES_FILE 
+sed -i "s/#elasticsearch.port=9300/elasticsearch.port=${ELASTICSEARCH_PORT_9300_TCP_PORT}/g" $USERGRID_PROPERTIES_FILE
+sed -i "s/#usergrid.use.default.queue=false/usergrid.use.default.queue=true/g" $USERGRID_PROPERTIES_FILE
+sed -i "s/#elasticsearch.queue_impl=LOCAL/elasticsearch.queue_impl=LOCAL/g" $USERGRID_PROPERTIES_FILE
+sed -i "s/#cassandra.version=1.2/cassandra.version=2.1/g" $USERGRID_PROPERTIES_FILE
 
 # append java options for aws access key and aws secret key 
 # but do not echo the secret so it does not end up in the logs
 set +x
 sed -i "s#\"-Djava.awt.headless=true -Xmx128m -XX:+UseConcMarkSweepGC\"#\"-Djava.awt.headless=true -XX:+UseConcMarkSweepGC -Xmx${TOMCAT_RAM} -Xms${TOMCAT_RAM} -verbose:gc -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY} -DAWS_SECRET_KEY=${AWS_SECRET_KEY}\"#g" /etc/default/tomcat7
 
-
-echo +++ load changed usergrid configuration
-service tomcat7 stop
-sleep 1 # give tomcat some time to clean up
+echo +++ start usergrid
 service tomcat7 start
 
 # database setup
@@ -99,16 +89,19 @@ service tomcat7 start
 while [ -z "$(curl -s localhost:8080/status | grep '"cassandraAvailable" : true')" ] ;
 do
   echo "+++ tomcat log:"
-  tail /var/log/tomcat7/catalina.out
+  tail -n 20 /var/log/tomcat7/catalina.out
   echo "+++ waiting for cassandra being available to usergrid"
   sleep 2
 done
 
-echo +++ usergrid database init
-curl --user ${ADMIN_USER}:${ADMIN_PASS} http://localhost:8080/system/database/setup
+echo +++ usergrid database setup
+curl --user ${ADMIN_USER}:${ADMIN_PASS} -X PUT http://localhost:8080/system/database/setup
 
-echo +++ usergrid superuser init
-curl --user ${ADMIN_USER}:${ADMIN_PASS} http://localhost:8080/system/superuser/setup
+echo +++ usergrid database bootstrap
+curl --user ${ADMIN_USER}:${ADMIN_PASS} -X PUT http://localhost:8080/system/database/bootstrap
+
+echo +++ usergrid superuser setup
+curl --user ${ADMIN_USER}:${ADMIN_PASS} -X GET http://localhost:8080/system/superuser/setup
 
 echo +++ create organization and corresponding organization admin account
 curl -D - \

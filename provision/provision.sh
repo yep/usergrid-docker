@@ -26,7 +26,7 @@ ORG_NAME=$4
 APP_NAME=$5
 ADMIN_PASS=$6
 
-echo using AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+echo "aws simple queue service (sqs) is accessed with AWS_ACCESS_KEY=${AWS_ACCESS_KEY}"
 
 # stop all running containers
 echo stopping running docker containers
