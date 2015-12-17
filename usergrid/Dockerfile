@@ -24,19 +24,19 @@ ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 # this is done in one run step so less files are included in the layers of the
 # docker image, making it smaller.
 RUN \
-  echo "+++ install tomcat and build dependencies" && \ 
+  echo "+++ install tomcat and packages required for compilation" && \ 
   apt-get update && \
   apt-get install -y maven curl tomcat7 git-core && \
   \
   echo "+++ fix tomcat7 init script: add missing java8 location" && \
-  sed -i "s/\/usr\/lib\/jvm\/java-7-oracle/\/usr\/lib\/jvm\/java-7-oracle \/usr\/lib\/jvm\/java-8-oracle/g" /etc/init.d/tomcat7 && \
+  sed -i "s#/usr/lib/jvm/java-7-oracle#/usr/lib/jvm/java-7-oracle /usr/lib/jvm/java-8-oracle#g" /etc/init.d/tomcat7 && \
   \
   echo "+++ get usergrid source, set logging level" && \
   git clone --single-branch --branch master --depth 50 https://github.com/apache/usergrid.git usergrid && \
   cd usergrid && \
-  git checkout b3a86047e4ab50dc5c3114c448975ad93c48a700 && \
-  grep -rl log4j.rootLogger=INFO stack | xargs sed -i 's/log4j.rootLogger=INFO/log4j.rootLogger=WARN/g' && \
-  sed -i "s/us-east-1/eu-west-1/g" /root/usergrid/stack/corepersistence/queue/src/main/java/org/apache/usergrid/persistence/queue/QueueFig.java && \
+  git checkout c6945e3d6f608d1333c269657eb47064866d3e0b && \
+  grep -rl log4j.rootLogger=INFO stack | xargs sed -i 's#log4j.rootLogger=INFO#log4j.rootLogger=WARN#g' && \
+  sed -i "s#us-east-1#eu-west-1#g" /root/usergrid/stack/corepersistence/queue/src/main/java/org/apache/usergrid/persistence/queue/QueueFig.java && \
   \
   echo "+++ build usergrid" && \
   cd /root/usergrid/sdks/java && \
@@ -61,5 +61,5 @@ CMD /root/run.sh
 #  8443 usergrid https interface
 EXPOSE 8080 8443
 
-# runtime configuration script: since this is updated frequently during development, it is added last.
-ADD run.sh /root/run.sh
+# runtime configuration script: since this is updated frequently during development, add it last
+COPY run.sh /root/run.sh
