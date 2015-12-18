@@ -96,7 +96,7 @@ Vagrant.configure("2") do |config|
       # config.vm.network :private_network, ip: ip
 
       # Public networking
-      config.vm.network :public_network, ip: "192.168.1.34"
+      config.vm.network :public_network, ip: "192.168.1.34" # if you change this ip, also change it in `portal/run.sh`
       config.vm.network "forwarded_port", guest: 8080, host: 8080, auto_correct: false # usergrid http api
 
       # Synced folder with rsync

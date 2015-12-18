@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-echo
 echo "+++ provision.sh"
 
 # all parameters to this shell script are optional, defauls will be used otherwise
@@ -24,8 +23,6 @@ ADMIN_PASS=$3
 
 echo "+++ stop running docker containers"
 docker stop $(docker ps --quiet)
-
-echo -x
 
 echo "+++ remove existing container images"
 docker rm -f usergrid cassandra elasticsearch
