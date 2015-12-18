@@ -9,4 +9,4 @@
 	url = https://github.com/yep/usergrid-cassandra
 [submodule "portal"]
 	path = portal
-	url = git@github.com:yep/usergrid-portal.git
+	url = https://github.com/yep/usergrid-portal
