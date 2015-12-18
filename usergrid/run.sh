@@ -17,10 +17,10 @@
 
 # this script is invoked after starting up the docker container.
 # it allows for configuration at run time instead of baking all
-# configuration settings into the container. you set configurable
+# configuration settings into the container. you can set all configurable
 # options using environment variables.
 #
-# overwrite any of the following default values at run time like this:
+# overwrite any of the following default values at run-time like this:
 #  docker run --env <key>=<value>
 
 if [ -z "${CASSANDRA_CLUSTER_NAME}" ]; then
@@ -54,7 +54,7 @@ echo "+++ usergrid configuration:  CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NA
 # start usergrid
 # ==============
 
-echo +++ configure usergrid
+echo "+++ configure usergrid"
 
 USERGRID_PROPERTIES_FILE=/usr/share/tomcat7/lib/usergrid-deployment.properties
 
@@ -72,13 +72,12 @@ sed -i "s/#usergrid.use.default.queue=false/usergrid.use.default.queue=true/g" $
 sed -i "s/#elasticsearch.queue_impl=LOCAL/elasticsearch.queue_impl=LOCAL/g" $USERGRID_PROPERTIES_FILE
 sed -i "s/#cassandra.version=1.2/cassandra.version=2.1/g" $USERGRID_PROPERTIES_FILE
 
-# append java options for aws access key and aws secret key 
-# but do not echo the secret so it does not end up in the logs
-set +x
-sed -i "s#\"-Djava.awt.headless=true -Xmx128m -XX:+UseConcMarkSweepGC\"#\"-Djava.awt.headless=true -XX:+UseConcMarkSweepGC -Xmx${TOMCAT_RAM} -Xms${TOMCAT_RAM} -verbose:gc -DAWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY} -DAWS_SECRET_KEY=${AWS_SECRET_KEY}\"#g" /etc/default/tomcat7
+# update tomcat's java options
+sed -i "s#\"-Djava.awt.headless=true -Xmx128m -XX:+UseConcMarkSweepGC\"#\"-Djava.awt.headless=true -XX:+UseConcMarkSweepGC -Xmx${TOMCAT_RAM} -Xms${TOMCAT_RAM} -verbose:gc\"#g" /etc/default/tomcat7
 
-echo +++ start usergrid
+echo "+++ start usergrid"
 service tomcat7 start
+
 
 # database setup
 # ==============
@@ -91,26 +90,26 @@ do
   sleep 2
 done
 
-echo +++ usergrid database setup
+echo "+++ usergrid database setup"
 curl --user ${ADMIN_USER}:${ADMIN_PASS} -X PUT http://localhost:8080/system/database/setup
 
-echo +++ usergrid database bootstrap
+echo "+++ usergrid database bootstrap"
 curl --user ${ADMIN_USER}:${ADMIN_PASS} -X PUT http://localhost:8080/system/database/bootstrap
 
-echo +++ usergrid superuser setup
+echo "+++ usergrid superuser setup"
 curl --user ${ADMIN_USER}:${ADMIN_PASS} -X GET http://localhost:8080/system/superuser/setup
 
-echo +++ create organization and corresponding organization admin account
+echo "+++ create organization and corresponding organization admin account"
 curl -D - \
      -X POST  \
      -d "organization=${ORG_NAME}&username=${ORG_NAME}admin&name=${ORG_NAME}admin&email=${ORG_NAME}admin@example.com&password=${ORG_NAME}admin" \
      http://localhost:8080/management/organizations
 
-echo +++ create admin token with permissions
+echo "+++ create admin token with permissions"
 export ADMINTOKEN=$(curl -X POST --silent "http://localhost:8080/management/token" -d "{ \"username\":\"${ORG_NAME}admin\", \"password\":\"${ORG_NAME}admin\", \"grant_type\":\"password\"} " | cut -f 1 -d , | cut -f 2 -d : | cut -f 2 -d \")
 echo ADMINTOKEN=$ADMINTOKEN
 
-echo +++ create app
+echo "+++ create app"
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
      -H "Content-Type: application/json" \
@@ -118,31 +117,31 @@ curl -D - \
      http://localhost:8080/management/orgs/${ORG_NAME}/apps
 
 
-echo +++ delete guest permissions
+echo "+++ delete guest permissions"
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
      -X DELETE "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/guest"
 
-echo +++ delete default permissions which are too permissive
+echo "+++ delete default permissions which are too permissive"
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
      -X DELETE "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/default" 
 
 
-echo +++ create new guest role
+echo "+++ create new guest role"
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
      -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles" \
      -d "{ \"name\":\"guest\", \"title\":\"Guest\" }"
 
-echo +++ create new default role, applied to each logged in user
+echo "+++ create new default role, applied to each logged in user"
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
      -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles" \
      -d "{ \"name\":\"default\", \"title\":\"User\" }"
 
 
-echo +++ create guest permissions required for login
+echo "+++ create guest permissions required for login"
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
      -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/guest/permissions" \
@@ -163,7 +162,7 @@ curl -D - \
      -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/guest/permissions" \
      -d "{ \"permission\":\"get:/auth/googleplus\" }"
 
-echo +++ create default permissions for a logged in user
+echo "+++ create default permissions for a logged in user"
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
      -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/default/permissions" \
@@ -174,14 +173,14 @@ curl -D - \
      -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/roles/default/permissions" \
      -d "{ \"permission\":\"post:/notifications\" }"
 
-echo +++ create user
+echo "+++ create user"
 curl -D - \
      -H "Authorization: Bearer ${ADMINTOKEN}" \
      -X POST "http://localhost:8080/${ORG_NAME}/${APP_NAME}/users" \
      -d "{ \"username\":\"${ORG_NAME}user\", \"password\":\"${ORG_NAME}user\", \"email\":\"${ORG_NAME}user@example.com\" }"
 
 echo
-echo +++ done
+echo "+++ done"
 
 # log usergrid output do stdout so it shows up in docker logs
 less +F /var/log/tomcat7/catalina.out /var/log/tomcat7/localhost_access_log.20*.txt
