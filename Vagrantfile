@@ -96,8 +96,7 @@ Vagrant.configure("2") do |config|
       # config.vm.network :private_network, ip: ip
 
       # Public networking
-      ip = "192.168.1.34"
-      config.vm.network :public_network, ip: ip
+      config.vm.network :public_network, ip: "192.168.1.34"
       config.vm.network "forwarded_port", guest: 8080, host: 8080, auto_correct: false # usergrid http api
 
       # Synced folder with rsync
@@ -108,7 +107,7 @@ Vagrant.configure("2") do |config|
       # config.vm.synced_folder ".", "/home/core/share", id: "core", :nfs => true, :mount_options => ['nolock,vers=3,udp']
 
       # Run provision script
-      config.vm.provision :shell, :path => "provision/vagrant-provision.sh", :args => ip
+      config.vm.provision :shell, :path => "provision/provision.sh"
     end
   end
 end

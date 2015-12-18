@@ -1,19 +1,10 @@
-running the usergrid stack on aws
-=================================
-
-cassandra configuration environment variables:
-
-    CLUSTER_NAME
-
-
-getting started
----------------
+run the usergrid stack on aws
+=============================
 
  - generate key pair in the aws console or add a key pair to the aws console
- - start the community ami `ami-8ec1f293` called `CoreOS-stable-557.2.0-hvm` of size `m3.medium` as spot instance
+ - start the community ami `ami-8ec1f293` called `CoreOS-stable-557.2.0-hvm` of size `m3.medium` (or a newer version of core os)
  - set up an ssh alias called `aws` so you can ssh into the machine by typing `ssh aws`
- - run `aws_deploy.sh`
-
+ - run `aws-provision.sh`
 
 apns setup note
 ---------------

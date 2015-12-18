@@ -14,46 +14,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# this script is run on a core os machine on amazon aws
+# use this script to provision to a core os machine on amazon aws
+# if set, the following environment variables will be passed to the aws machine:
+#  ORG_NAME
+#  APP_NAME
+#  ADMIN_PASS
 
-echo
-echo '+ aws-provision.sh'
+set -x
 
-if [ -z "$1" ]; then
-  echo 'Error: AWS_ACCESS_KEY not set!'
-  exit
-fi
-if [ -z "$2" ]; then
-  echo 'Error: AWS_SECRET_KEY not set!'
-  exit
-fi
-if [ -z "$3" ]; then
-  echo 'Warning: ORG_NAME not set! Using "org"'
-  ORG_NAME=org
-else
-  ORG_NAME=$3
-fi
-if [ -z "$4" ]; then
-  echo 'Warning: APP_NAME not set! Using "app"'
-  APP_NAME=app
-else
-  APP_NAME=$4
-fi
-if [ -z "$5" ]; then
-  echo 'Info: ADMIN_PASSWORD not set!'
-fi
+# where to copy files - destination folder has to be named `share`
+FILE_LOCATION=/home/core/share
+DESTINATION=${SSH_ALIAS}:${FILE_LOCATION}
 
-EXTERNAL_IP=$(curl --silent http://169.254.169.254/latest/meta-data/public-ipv4)
-echo using EXTERNAL_IP=$EXTERNAL_IP
-echo using AWS_ACCESS_KEY=$1
-# AWS_SECRET_KEY is assumed in $2
+echo "+++ remove old files on aws machine (if any)"
+ssh -v -o StrictHostKeyChecking=no ${SSH_ALIAS} "sudo rm -rf ${FILE_LOCATION}; mkdir -p ${FILE_LOCATION}"
+
+echo "+++ copy files to aws machine"
+scp provision.sh cloudconfig.yaml ${DESTINATION}
+scp -r ../java ../usergrid-dev ../usergrid ../cassandra ../elasticsearch ${DESTINATION}
 
 set +x
 
-echo apply cloudconfig.yaml
-sudo mkdir -p /var/lib/coreos-install
-sudo mv /home/core/share/cloudconfig.yaml /var/lib/coreos-install/user_data
-sudo coreos-cloudinit -from-file=/var/lib/coreos-install/user_data
+echo "+++ apply cloudconfig.yaml"
+ssh ${SSH_ALIAS} "\
+  sudo mkdir -p /var/lib/coreos-install && \
+  sudo mv /home/core/share/cloudconfig.yaml /var/lib/coreos-install/user_data && \
+  sudo coreos-cloudinit -from-file=/var/lib/coreos-install/user_data"
 
-# continue with the script which is used with both aws and vagrant
-source $(dirname "${BASH_SOURCE[0]}")/provision.sh $EXTERNAL_IP $1 $2 $ORG_NAME $APP_NAME $5
+echo "+++ run provision.sh on aws machine"
+ssh ${SSH_ALIAS} "/bin/bash ${FILE_LOCATION}/provision.sh ${ORG_NAME} ${APP_NAME} ${ADMIN_PASS}

@@ -1,6 +1,10 @@
 #cloud-config
-# documentation at
-# https://coreos.com/docs/cluster-management/setup/mounting-storage/#use-attached-storage-for-docker
+#
+# cloud config documentation is at:
+# https://coreos.com/os/docs/latest/cloud-config.html
+#
+# attached storage documentation is at:
+# https://coreos.com/os/docs/latest/mounting-storage.html
 
 coreos:
   update:
@@ -61,8 +65,10 @@ write_files:
   - path: /etc/ntp.conf
     content: |
       # see https://coreos.com/docs/cluster-management/setup/configuring-date-and-timezone/#automating-with-cloud-config
-      server 0.pool.example.com
-      server 1.pool.example.com
+      server 0.pool.ntp.org
+      server 1.pool.ntp.org
+      server 2.pool.ntp.org
+      server 3.pool.ntp.org
 
       # - Allow only time queries, at a limited rate.
       # - Allow all local queries (IPv4, IPv6)
@@ -72,4 +78,4 @@ write_files:
   - path: /etc/systemd/timesyncd.conf
     content: |
       [Time]
-      NTP=0.pool.example.com 1.pool.example.com
+      NTP=0.pool.ntp.org 1.pool.ntp.org 2.pool.ntp.org 3.pool.ntp.org
