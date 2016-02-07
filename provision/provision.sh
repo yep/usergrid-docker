@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2015 TOMORROW FOCUS News+ GmbH
+# Copyright 2016 Jahn Bertsch
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@ echo "+++ provision.sh"
 ORG_NAME=$1
 APP_NAME=$2
 ADMIN_PASS=$3
+USERGRID_HOST=$4
 
 echo "+++ stop running docker containers"
 docker stop $(docker ps --quiet)
@@ -30,5 +32,5 @@ docker rm -f usergrid cassandra elasticsearch portal
 echo "+++ start containers"
 docker run -d --log-driver=syslog --name cassandra -p 9160:9160 -p 9042:9042 --volume /media/data/cassandra-data:/var/lib/cassandra yep1/usergrid-cassandra
 docker run -d --log-driver=syslog --name elasticsearch --volume /media/data/elasticsearch-data:/data yep1/usergrid-elasticsearch
-docker run -d --log-driver=syslog --name usergrid --env EXTERNAL_IP=${EXTERNAL_IP} --env ADMIN_PASS=${ADMIN_PASS} --env ORG_NAME=${ORG_NAME} --env APP_NAME=${APP_NAME} --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 -t yep1/usergrid
-docker run -d --log-driver=syslog --name portal -p 80:80 yep1/usergrid-portal
+docker run -d --log-driver=syslog --name usergrid --env ADMIN_PASS=${ADMIN_PASS} --env ORG_NAME=${ORG_NAME} --env APP_NAME=${APP_NAME} --link elasticsearch:elasticsearch --link cassandra:cassandra -p 8080:8080 -t yep1/usergrid
+docker run -d --log-driver=syslog --name portal --env USERGRID_HOST=${USERGRID_HOST} -p 80:80 yep1/usergrid-portal
