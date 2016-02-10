@@ -31,7 +31,7 @@ ssh -v -o StrictHostKeyChecking=no ${SSH_ALIAS} "sudo rm -rf ${FILE_LOCATION}; m
 
 echo "+++ copy files to aws machine"
 scp provision.sh cloudconfig.yaml ${DESTINATION}
-scp -r ../java ../usergrid-dev ../usergrid ../cassandra ../elasticsearch ${DESTINATION}
+scp -r ../java ../usergrid ../cassandra ../elasticsearch ${DESTINATION}
 
 set +x
 
@@ -42,4 +42,5 @@ ssh ${SSH_ALIAS} "\
   sudo coreos-cloudinit -from-file=/var/lib/coreos-install/user_data"
 
 echo "+++ run provision.sh on aws machine"
-ssh ${SSH_ALIAS} "/bin/bash ${FILE_LOCATION}/provision.sh ${ORG_NAME} ${APP_NAME} ${ADMIN_PASS}
+PUBLIC_AWS_IP=$(ssh ${SSH_ALIAS} "curl http://169.254.169.254/latest/meta-data/public-ipv4")
+ssh ${SSH_ALIAS} "/bin/bash ${FILE_LOCATION}/provision.sh ${PUBLIC_AWS_IP}:8080 ${ORG_NAME} ${APP_NAME} ${ADMIN_PASS}

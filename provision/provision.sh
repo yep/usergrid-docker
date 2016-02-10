@@ -17,11 +17,11 @@
 
 echo "+++ provision.sh"
 
-# all parameters to this shell script are optional, defauls will be used otherwise
-ORG_NAME=$1
-APP_NAME=$2
-ADMIN_PASS=$3
-USERGRID_HOST=$4
+# all parameters to this shell script are optional, defaults will be used otherwise
+USERGRID_HOST=$1
+ORG_NAME=$2
+APP_NAME=$3
+ADMIN_PASS=$4
 
 echo "+++ stop running docker containers"
 docker stop $(docker ps --quiet)

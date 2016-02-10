@@ -95,8 +95,9 @@ Vagrant.configure("2") do |config|
       # ip = "172.17.8.#{i+100}"
       # config.vm.network :private_network, ip: ip
 
-      # Public networking
-      config.vm.network :public_network, ip: "192.168.1.34" # if you change this ip, also change it in `portal/run.sh`
+      # Public networking with static IPs
+      ip = "192.168.1.34"
+      config.vm.network :public_network, ip: ip
       config.vm.network "forwarded_port", guest: 8080, host: 8080, auto_correct: false # usergrid http api
 
       # Synced folder with rsync
@@ -107,7 +108,7 @@ Vagrant.configure("2") do |config|
       # config.vm.synced_folder ".", "/home/core/share", id: "core", :nfs => true, :mount_options => ['nolock,vers=3,udp']
 
       # Run provision script
-      config.vm.provision :shell, :path => "provision/provision.sh"
+      config.vm.provision :shell, :path => "provision/provision.sh", :args => ip
     end
   end
 end
