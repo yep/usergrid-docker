@@ -183,4 +183,4 @@ echo
 echo "+++ done"
 
 # log usergrid output do stdout so it shows up in docker logs
-less +F /var/log/tomcat7/catalina.out /var/log/tomcat7/localhost_access_log.20*.txt
+tail -f /var/log/tomcat7/catalina.out /var/log/tomcat7/localhost_access_log.20*.txt
