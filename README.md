@@ -73,7 +73,7 @@ Start the Usergrid admin portal, change 192.168.1.34:8080 to match the public re
 Environment Variables
 ---------------------
 
-The following [environment variables](http://docs.docker.com/userguide/dockerlinks/#environment-variables) are used to access [backing services](http://12factor.net/backing-services) in scripts in the usergrid container. You have to name the containers of these services accordingly in order that they can be found.
+The following [environment variables](http://docs.docker.com/userguide/dockerlinks/#environment-variables) are used to access [backing services](http://12factor.net/backing-services) in scripts of the usergrid container. The names of the Cassandra and Elasticsearch containers can not be changed or you also have to change the names of the environment variables below.
 
     CASSANDRA_PORT_9160_TCP_ADDR
     CASSANDRA_PORT_9160_TCP_PORT
@@ -115,11 +115,11 @@ Get the submodules first:
     cd usergrid-docker
     git submodule update --init
 
-First, build the java base container:
+Then, build the java base container:
 
-    cd java && build -t usergrid- .
+    cd java && build -t usergrid-java .
 
-The base container is used by all other containers. In each `Dockerfile` change `FROM yep1/usergrid-java` to `FROM usergrid-java` to use the local java container created above.
+The java container is used by all other containers. By default, automated build of the java container is used. Therefore, in each `Dockerfile` change `FROM yep1/usergrid-java` to `FROM usergrid-java` to use the local java container you just created.
 
 Finally, build the containers:
 
@@ -213,7 +213,7 @@ Some useful OSX commands:
 License
 -------
 
-    Copyright 2014-2015 Jahn Bertsch
+    Copyright 2014-2016 Jahn Bertsch
     Copyright 2015 TOMORROW FOCUS News+ GmbH
 
     Licensed under the Apache License, Version 2.0 (the "License");
